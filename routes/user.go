@@ -8,15 +8,42 @@ import (
 	"net/http"
 	"time"
 	auth "todo/auth"
+	"todo/ent"
 	"todo/ent/user"
 
 	"github.com/go-chi/chi/v5"
+	"github.com/go-chi/jwtauth/v5"
 	"golang.org/x/crypto/bcrypt"
 )
 
-func (handler *Handler) MakeToken(name string) string {
-	_, tokenString, _ := handler.TokenAuth.Encode(map[string]interface{}{"username": name})
-	return tokenString
+type contextKey string
+
+const userIDKey contextKey = "userID"
+
+func (handler *Handler) MakeToken(user ent.User) (string, error) {
+	_, tokenString, err := handler.TokenAuth.Encode(map[string]interface{}{"username": user.Name, "email": user.Email, "userID": user.ID})
+	if err != nil {
+		log.Println("Failed to create token: ", err)
+	}
+	return tokenString, err
+}
+
+func UserContextMiddleware(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		ctx := r.Context()
+		// Get the userID from the jwt claims, set as int in context
+		_, claims, _ := jwtauth.FromContext(ctx)
+		userID, ok := claims[string(userIDKey)]
+		if !ok {
+			fmt.Println("no userID in claims")
+			next.ServeHTTP(w, r.WithContext(ctx))
+			return
+		}
+		userID = int(userID.(float64))
+		ctx = context.WithValue(ctx, userIDKey, userID)
+		ctx.Value(userIDKey)
+		next.ServeHTTP(w, r.WithContext(ctx))
+	})
 }
 
 func (handler *Handler) Login(w http.ResponseWriter, r *http.Request) {
@@ -44,7 +71,11 @@ func (handler *Handler) Login(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	token := handler.MakeToken(user.Name)
+	token, err := handler.MakeToken(*user)
+	if err != nil {
+		http.Error(w, "Failed to create token", http.StatusInternalServerError)
+		return
+	}
 
 	http.SetCookie(w, &http.Cookie{
 		HttpOnly: true,
@@ -109,7 +140,12 @@ func (handler *Handler) Register(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, fmt.Sprintf("Error creating user: %v", err), http.StatusInternalServerError)
 		return
 	}
-	token := handler.MakeToken(user.Name)
+
+	token, err := handler.MakeToken(*user)
+	if err != nil {
+		http.Error(w, "Failed to create token", http.StatusInternalServerError)
+		return
+	}
 
 	http.SetCookie(w, &http.Cookie{
 		HttpOnly: true,

@@ -27,11 +27,6 @@ var (
 
 var tokenAuth *jwtauth.JWTAuth
 
-func MakeToken(name string) string {
-	_, tokenString, _ := tokenAuth.Encode(map[string]interface{}{"username": name})
-	return tokenString
-}
-
 func main() {
 	connectionString := fmt.Sprintf("host=localhost port=5432 user=%s dbname=%s password=%s sslmode=disable", PG_USER, PG_DB, PG_PASSWORD)
 	client, err := ent.Open("postgres", connectionString)
@@ -73,10 +68,15 @@ func main() {
 
 	// Protected routes
 	r.Group(func(r chi.Router) {
-		// r.Use(auth.JWTAuthMiddleware) // Apply JWT middleware only to routes within this group
+		// Seek, verify and validate JWT tokens
 		r.Use(jwtauth.Verifier(tokenAuth))
+		r.Use(jwtauth.Authenticator(tokenAuth))
+		r.Use(routes.UserContextMiddleware)
 		r.Get("/users/{name}", handler.QueryUser)
 		r.Get("/users", handler.GetAllUsers)
+		r.Post("/todos", handler.CreateTodo)
+		r.Get("/todos", handler.GetTodos)
+		r.Post("/todos/{id}/complete", handler.MarkTodoComplete)
 	})
 
 	log.Println("Starting server on :8080")

@@ -4,8 +4,10 @@ package ent
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"todo/ent/todo"
+	"todo/ent/user"
 
 	"entgo.io/ent/dialect/sql/sqlgraph"
 	"entgo.io/ent/schema/field"
@@ -18,6 +20,37 @@ type TodoCreate struct {
 	hooks    []Hook
 }
 
+// SetTitle sets the "title" field.
+func (tc *TodoCreate) SetTitle(s string) *TodoCreate {
+	tc.mutation.SetTitle(s)
+	return tc
+}
+
+// SetStatus sets the "status" field.
+func (tc *TodoCreate) SetStatus(t todo.Status) *TodoCreate {
+	tc.mutation.SetStatus(t)
+	return tc
+}
+
+// SetNillableStatus sets the "status" field if the given value is not nil.
+func (tc *TodoCreate) SetNillableStatus(t *todo.Status) *TodoCreate {
+	if t != nil {
+		tc.SetStatus(*t)
+	}
+	return tc
+}
+
+// SetUserID sets the "user" edge to the User entity by ID.
+func (tc *TodoCreate) SetUserID(id int) *TodoCreate {
+	tc.mutation.SetUserID(id)
+	return tc
+}
+
+// SetUser sets the "user" edge to the User entity.
+func (tc *TodoCreate) SetUser(u *User) *TodoCreate {
+	return tc.SetUserID(u.ID)
+}
+
 // Mutation returns the TodoMutation object of the builder.
 func (tc *TodoCreate) Mutation() *TodoMutation {
 	return tc.mutation
@@ -25,6 +58,7 @@ func (tc *TodoCreate) Mutation() *TodoMutation {
 
 // Save creates the Todo in the database.
 func (tc *TodoCreate) Save(ctx context.Context) (*Todo, error) {
+	tc.defaults()
 	return withHooks(ctx, tc.sqlSave, tc.mutation, tc.hooks)
 }
 
@@ -50,8 +84,30 @@ func (tc *TodoCreate) ExecX(ctx context.Context) {
 	}
 }
 
+// defaults sets the default values of the builder before save.
+func (tc *TodoCreate) defaults() {
+	if _, ok := tc.mutation.Status(); !ok {
+		v := todo.DefaultStatus
+		tc.mutation.SetStatus(v)
+	}
+}
+
 // check runs all checks and user-defined validators on the builder.
 func (tc *TodoCreate) check() error {
+	if _, ok := tc.mutation.Title(); !ok {
+		return &ValidationError{Name: "title", err: errors.New(`ent: missing required field "Todo.title"`)}
+	}
+	if _, ok := tc.mutation.Status(); !ok {
+		return &ValidationError{Name: "status", err: errors.New(`ent: missing required field "Todo.status"`)}
+	}
+	if v, ok := tc.mutation.Status(); ok {
+		if err := todo.StatusValidator(v); err != nil {
+			return &ValidationError{Name: "status", err: fmt.Errorf(`ent: validator failed for field "Todo.status": %w`, err)}
+		}
+	}
+	if _, ok := tc.mutation.UserID(); !ok {
+		return &ValidationError{Name: "user", err: errors.New(`ent: missing required edge "Todo.user"`)}
+	}
 	return nil
 }
 
@@ -78,6 +134,31 @@ func (tc *TodoCreate) createSpec() (*Todo, *sqlgraph.CreateSpec) {
 		_node = &Todo{config: tc.config}
 		_spec = sqlgraph.NewCreateSpec(todo.Table, sqlgraph.NewFieldSpec(todo.FieldID, field.TypeInt))
 	)
+	if value, ok := tc.mutation.Title(); ok {
+		_spec.SetField(todo.FieldTitle, field.TypeString, value)
+		_node.Title = value
+	}
+	if value, ok := tc.mutation.Status(); ok {
+		_spec.SetField(todo.FieldStatus, field.TypeEnum, value)
+		_node.Status = value
+	}
+	if nodes := tc.mutation.UserIDs(); len(nodes) > 0 {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.M2O,
+			Inverse: true,
+			Table:   todo.UserTable,
+			Columns: []string{todo.UserColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(user.FieldID, field.TypeInt),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_node.user_todos = &nodes[0]
+		_spec.Edges = append(_spec.Edges, edge)
+	}
 	return _node, _spec
 }
 
@@ -99,6 +180,7 @@ func (tcb *TodoCreateBulk) Save(ctx context.Context) ([]*Todo, error) {
 	for i := range tcb.builders {
 		func(i int, root context.Context) {
 			builder := tcb.builders[i]
+			builder.defaults()
 			var mut Mutator = MutateFunc(func(ctx context.Context, m Mutation) (Value, error) {
 				mutation, ok := m.(*TodoMutation)
 				if !ok {

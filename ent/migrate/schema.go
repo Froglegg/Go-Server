@@ -11,12 +11,30 @@ var (
 	// TodosColumns holds the columns for the "todos" table.
 	TodosColumns = []*schema.Column{
 		{Name: "id", Type: field.TypeInt, Increment: true},
+		{Name: "title", Type: field.TypeString},
+		{Name: "status", Type: field.TypeEnum, Enums: []string{"incomplete", "complete"}, Default: "incomplete"},
+		{Name: "user_todos", Type: field.TypeInt},
 	}
 	// TodosTable holds the schema information for the "todos" table.
 	TodosTable = &schema.Table{
 		Name:       "todos",
 		Columns:    TodosColumns,
 		PrimaryKey: []*schema.Column{TodosColumns[0]},
+		ForeignKeys: []*schema.ForeignKey{
+			{
+				Symbol:     "todos_users_todos",
+				Columns:    []*schema.Column{TodosColumns[3]},
+				RefColumns: []*schema.Column{UsersColumns[0]},
+				OnDelete:   schema.NoAction,
+			},
+		},
+		Indexes: []*schema.Index{
+			{
+				Name:    "todo_title",
+				Unique:  true,
+				Columns: []*schema.Column{TodosColumns[1]},
+			},
+		},
 	}
 	// UsersColumns holds the columns for the "users" table.
 	UsersColumns = []*schema.Column{
@@ -37,6 +55,11 @@ var (
 				Unique:  false,
 				Columns: []*schema.Column{UsersColumns[2]},
 			},
+			{
+				Name:    "user_age_name",
+				Unique:  true,
+				Columns: []*schema.Column{UsersColumns[1], UsersColumns[2]},
+			},
 		},
 	}
 	// Tables holds all the tables in the schema.
@@ -47,4 +70,5 @@ var (
 )
 
 func init() {
+	TodosTable.ForeignKeys[0].RefTable = UsersTable
 }

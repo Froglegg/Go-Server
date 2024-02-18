@@ -9,4 +9,5 @@ import (
 type Handler struct {
 	Client    *ent.Client
 	TokenAuth *jwtauth.JWTAuth
+	User      *ent.User
 }
