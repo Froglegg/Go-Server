@@ -62,30 +62,31 @@ func (uu *UserUpdate) SetNillableName(s *string) *UserUpdate {
 	return uu
 }
 
-// SetCash sets the "cash" field.
-func (uu *UserUpdate) SetCash(f float64) *UserUpdate {
-	uu.mutation.ResetCash()
-	uu.mutation.SetCash(f)
+// SetEmail sets the "email" field.
+func (uu *UserUpdate) SetEmail(s string) *UserUpdate {
+	uu.mutation.SetEmail(s)
 	return uu
 }
 
-// SetNillableCash sets the "cash" field if the given value is not nil.
-func (uu *UserUpdate) SetNillableCash(f *float64) *UserUpdate {
-	if f != nil {
-		uu.SetCash(*f)
+// SetNillableEmail sets the "email" field if the given value is not nil.
+func (uu *UserUpdate) SetNillableEmail(s *string) *UserUpdate {
+	if s != nil {
+		uu.SetEmail(*s)
 	}
 	return uu
 }
 
-// AddCash adds f to the "cash" field.
-func (uu *UserUpdate) AddCash(f float64) *UserUpdate {
-	uu.mutation.AddCash(f)
+// SetPassword sets the "password" field.
+func (uu *UserUpdate) SetPassword(s string) *UserUpdate {
+	uu.mutation.SetPassword(s)
 	return uu
 }
 
-// ClearCash clears the value of the "cash" field.
-func (uu *UserUpdate) ClearCash() *UserUpdate {
-	uu.mutation.ClearCash()
+// SetNillablePassword sets the "password" field if the given value is not nil.
+func (uu *UserUpdate) SetNillablePassword(s *string) *UserUpdate {
+	if s != nil {
+		uu.SetPassword(*s)
+	}
 	return uu
 }
 
@@ -152,14 +153,11 @@ func (uu *UserUpdate) sqlSave(ctx context.Context) (n int, err error) {
 	if value, ok := uu.mutation.Name(); ok {
 		_spec.SetField(user.FieldName, field.TypeString, value)
 	}
-	if value, ok := uu.mutation.Cash(); ok {
-		_spec.SetField(user.FieldCash, field.TypeFloat64, value)
+	if value, ok := uu.mutation.Email(); ok {
+		_spec.SetField(user.FieldEmail, field.TypeString, value)
 	}
-	if value, ok := uu.mutation.AddedCash(); ok {
-		_spec.AddField(user.FieldCash, field.TypeFloat64, value)
-	}
-	if uu.mutation.CashCleared() {
-		_spec.ClearField(user.FieldCash, field.TypeFloat64)
+	if value, ok := uu.mutation.Password(); ok {
+		_spec.SetField(user.FieldPassword, field.TypeString, value)
 	}
 	if n, err = sqlgraph.UpdateNodes(ctx, uu.driver, _spec); err != nil {
 		if _, ok := err.(*sqlgraph.NotFoundError); ok {
@@ -216,30 +214,31 @@ func (uuo *UserUpdateOne) SetNillableName(s *string) *UserUpdateOne {
 	return uuo
 }
 
-// SetCash sets the "cash" field.
-func (uuo *UserUpdateOne) SetCash(f float64) *UserUpdateOne {
-	uuo.mutation.ResetCash()
-	uuo.mutation.SetCash(f)
+// SetEmail sets the "email" field.
+func (uuo *UserUpdateOne) SetEmail(s string) *UserUpdateOne {
+	uuo.mutation.SetEmail(s)
 	return uuo
 }
 
-// SetNillableCash sets the "cash" field if the given value is not nil.
-func (uuo *UserUpdateOne) SetNillableCash(f *float64) *UserUpdateOne {
-	if f != nil {
-		uuo.SetCash(*f)
+// SetNillableEmail sets the "email" field if the given value is not nil.
+func (uuo *UserUpdateOne) SetNillableEmail(s *string) *UserUpdateOne {
+	if s != nil {
+		uuo.SetEmail(*s)
 	}
 	return uuo
 }
 
-// AddCash adds f to the "cash" field.
-func (uuo *UserUpdateOne) AddCash(f float64) *UserUpdateOne {
-	uuo.mutation.AddCash(f)
+// SetPassword sets the "password" field.
+func (uuo *UserUpdateOne) SetPassword(s string) *UserUpdateOne {
+	uuo.mutation.SetPassword(s)
 	return uuo
 }
 
-// ClearCash clears the value of the "cash" field.
-func (uuo *UserUpdateOne) ClearCash() *UserUpdateOne {
-	uuo.mutation.ClearCash()
+// SetNillablePassword sets the "password" field if the given value is not nil.
+func (uuo *UserUpdateOne) SetNillablePassword(s *string) *UserUpdateOne {
+	if s != nil {
+		uuo.SetPassword(*s)
+	}
 	return uuo
 }
 
@@ -336,14 +335,11 @@ func (uuo *UserUpdateOne) sqlSave(ctx context.Context) (_node *User, err error) 
 	if value, ok := uuo.mutation.Name(); ok {
 		_spec.SetField(user.FieldName, field.TypeString, value)
 	}
-	if value, ok := uuo.mutation.Cash(); ok {
-		_spec.SetField(user.FieldCash, field.TypeFloat64, value)
+	if value, ok := uuo.mutation.Email(); ok {
+		_spec.SetField(user.FieldEmail, field.TypeString, value)
 	}
-	if value, ok := uuo.mutation.AddedCash(); ok {
-		_spec.AddField(user.FieldCash, field.TypeFloat64, value)
-	}
-	if uuo.mutation.CashCleared() {
-		_spec.ClearField(user.FieldCash, field.TypeFloat64)
+	if value, ok := uuo.mutation.Password(); ok {
+		_spec.SetField(user.FieldPassword, field.TypeString, value)
 	}
 	_node = &User{config: uuo.config}
 	_spec.Assign = _node.assignValues

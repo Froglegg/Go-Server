@@ -31,17 +31,15 @@ func (uc *UserCreate) SetName(s string) *UserCreate {
 	return uc
 }
 
-// SetCash sets the "cash" field.
-func (uc *UserCreate) SetCash(f float64) *UserCreate {
-	uc.mutation.SetCash(f)
+// SetEmail sets the "email" field.
+func (uc *UserCreate) SetEmail(s string) *UserCreate {
+	uc.mutation.SetEmail(s)
 	return uc
 }
 
-// SetNillableCash sets the "cash" field if the given value is not nil.
-func (uc *UserCreate) SetNillableCash(f *float64) *UserCreate {
-	if f != nil {
-		uc.SetCash(*f)
-	}
+// SetPassword sets the "password" field.
+func (uc *UserCreate) SetPassword(s string) *UserCreate {
+	uc.mutation.SetPassword(s)
 	return uc
 }
 
@@ -90,6 +88,12 @@ func (uc *UserCreate) check() error {
 	if _, ok := uc.mutation.Name(); !ok {
 		return &ValidationError{Name: "name", err: errors.New(`ent: missing required field "User.name"`)}
 	}
+	if _, ok := uc.mutation.Email(); !ok {
+		return &ValidationError{Name: "email", err: errors.New(`ent: missing required field "User.email"`)}
+	}
+	if _, ok := uc.mutation.Password(); !ok {
+		return &ValidationError{Name: "password", err: errors.New(`ent: missing required field "User.password"`)}
+	}
 	return nil
 }
 
@@ -124,9 +128,13 @@ func (uc *UserCreate) createSpec() (*User, *sqlgraph.CreateSpec) {
 		_spec.SetField(user.FieldName, field.TypeString, value)
 		_node.Name = value
 	}
-	if value, ok := uc.mutation.Cash(); ok {
-		_spec.SetField(user.FieldCash, field.TypeFloat64, value)
-		_node.Cash = value
+	if value, ok := uc.mutation.Email(); ok {
+		_spec.SetField(user.FieldEmail, field.TypeString, value)
+		_node.Email = value
+	}
+	if value, ok := uc.mutation.Password(); ok {
+		_spec.SetField(user.FieldPassword, field.TypeString, value)
+		_node.Password = value
 	}
 	return _node, _spec
 }

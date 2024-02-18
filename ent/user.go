@@ -20,8 +20,10 @@ type User struct {
 	Age int `json:"age,omitempty"`
 	// Name holds the value of the "name" field.
 	Name string `json:"name,omitempty"`
-	// Cash holds the value of the "cash" field.
-	Cash         float64 `json:"cash,omitempty"`
+	// Email holds the value of the "email" field.
+	Email string `json:"email,omitempty"`
+	// Password holds the value of the "password" field.
+	Password     string `json:"password,omitempty"`
 	selectValues sql.SelectValues
 }
 
@@ -30,11 +32,9 @@ func (*User) scanValues(columns []string) ([]any, error) {
 	values := make([]any, len(columns))
 	for i := range columns {
 		switch columns[i] {
-		case user.FieldCash:
-			values[i] = new(sql.NullFloat64)
 		case user.FieldID, user.FieldAge:
 			values[i] = new(sql.NullInt64)
-		case user.FieldName:
+		case user.FieldName, user.FieldEmail, user.FieldPassword:
 			values[i] = new(sql.NullString)
 		default:
 			values[i] = new(sql.UnknownType)
@@ -69,11 +69,17 @@ func (u *User) assignValues(columns []string, values []any) error {
 			} else if value.Valid {
 				u.Name = value.String
 			}
-		case user.FieldCash:
-			if value, ok := values[i].(*sql.NullFloat64); !ok {
-				return fmt.Errorf("unexpected type %T for field cash", values[i])
+		case user.FieldEmail:
+			if value, ok := values[i].(*sql.NullString); !ok {
+				return fmt.Errorf("unexpected type %T for field email", values[i])
 			} else if value.Valid {
-				u.Cash = value.Float64
+				u.Email = value.String
+			}
+		case user.FieldPassword:
+			if value, ok := values[i].(*sql.NullString); !ok {
+				return fmt.Errorf("unexpected type %T for field password", values[i])
+			} else if value.Valid {
+				u.Password = value.String
 			}
 		default:
 			u.selectValues.Set(columns[i], values[i])
@@ -117,8 +123,11 @@ func (u *User) String() string {
 	builder.WriteString("name=")
 	builder.WriteString(u.Name)
 	builder.WriteString(", ")
-	builder.WriteString("cash=")
-	builder.WriteString(fmt.Sprintf("%v", u.Cash))
+	builder.WriteString("email=")
+	builder.WriteString(u.Email)
+	builder.WriteString(", ")
+	builder.WriteString("password=")
+	builder.WriteString(u.Password)
 	builder.WriteByte(')')
 	return builder.String()
 }
