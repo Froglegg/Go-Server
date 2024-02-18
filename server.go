@@ -1,18 +1,20 @@
 package main
 
 import (
-	"context"
-	"encoding/json"
 	"fmt"
 	"log"
 	"net/http"
 	"os"
+	"time"
 
 	"todo/ent"
-	"todo/ent/user"
+	routes "todo/routes"
 
 	"github.com/go-chi/chi/v5"
+	"github.com/go-chi/chi/v5/middleware"
 	"github.com/go-chi/cors"
+	"github.com/go-chi/httprate"
+	"github.com/go-chi/jwtauth/v5"
 	_ "github.com/lib/pq"
 )
 
@@ -20,7 +22,15 @@ var (
 	PG_USER     = os.Getenv("PG_USER")
 	PG_PASSWORD = os.Getenv("PG_PASSWORD")
 	PG_DB       = os.Getenv("PG_DB")
+	JWT_SECRET  = os.Getenv("JWT_SECRET")
 )
+
+var tokenAuth *jwtauth.JWTAuth
+
+func MakeToken(name string) string {
+	_, tokenString, _ := tokenAuth.Encode(map[string]interface{}{"username": name})
+	return tokenString
+}
 
 func main() {
 	connectionString := fmt.Sprintf("host=localhost port=5432 user=%s dbname=%s password=%s sslmode=disable", PG_USER, PG_DB, PG_PASSWORD)
@@ -32,63 +42,48 @@ func main() {
 
 	r := chi.NewRouter()
 
-	// use a permissive allow all handler
-	r.Use(cors.AllowAll().Handler)
+	// middleware stack
+	r.Use(middleware.Logger)
+	r.Use(httprate.LimitByIP(100, 1*time.Minute))
+	r.Use(middleware.Timeout(60 * time.Second))
+	r.Use(middleware.Recoverer)
 
-	r.Post("/users", func(w http.ResponseWriter, r *http.Request) {
-		CreateUser(w, r, client)
+	// Basic CORS
+	r.Use(cors.Handler(cors.Options{
+		AllowedOrigins:   []string{"https://foo.com", "http://localhost:3000"}, // client origins
+		AllowedMethods:   []string{"GET", "POST", "PUT", "DELETE", "OPTIONS"},
+		AllowedHeaders:   []string{"Accept", "Authorization", "Content-Type", "X-CSRF-Token"},
+		ExposedHeaders:   []string{"Link"},
+		AllowCredentials: true, // allow for cookies (jwt in our case)
+		MaxAge:           300,  // Preflight request cache duration
+	}))
+
+	// auth & handler
+	tokenAuth = jwtauth.New("HS256", []byte(JWT_SECRET), nil)
+	handler := &routes.Handler{Client: client, TokenAuth: tokenAuth}
+
+	// Public routes
+	r.Group(func(r chi.Router) {
+		//  prevent brute force attacks
+		r.Use(httprate.LimitByIP(10, 1*time.Minute))
+		r.Post("/login", handler.Login)
+		r.Post("/logout", handler.Logout)
+		r.Post("/register", handler.Register)
 	})
 
-	r.Get("/users/{name}", func(w http.ResponseWriter, r *http.Request) {
-		QueryUser(w, r, client)
-	})
-
-	r.Get("/users", func(w http.ResponseWriter, r *http.Request) {
-		GetAllUsers(w, r, client)
+	// Protected routes
+	r.Group(func(r chi.Router) {
+		// r.Use(auth.JWTAuthMiddleware) // Apply JWT middleware only to routes within this group
+		r.Use(jwtauth.Verifier(tokenAuth))
+		r.Get("/users/{name}", handler.QueryUser)
+		r.Get("/users", handler.GetAllUsers)
 	})
 
 	log.Println("Starting server on :8080")
 	http.ListenAndServe(":8080", r)
 }
 
-func CreateUser(w http.ResponseWriter, r *http.Request, client *ent.Client) {
-	ctx := context.Background()
-	u := &ent.User{}
-	if err := json.NewDecoder(r.Body).Decode(u); err != nil {
-		http.Error(w, err.Error(), http.StatusBadRequest)
-		return
-	}
-	user, err := client.User.Create().SetAge(u.Age).SetName(u.Name).Save(ctx)
-	if err != nil {
-		http.Error(w, fmt.Sprintf("error creating user: %v", err), http.StatusInternalServerError)
-		return
-	}
-	log.Println("user was created: ", user)
-	json.NewEncoder(w).Encode(user)
-}
-
-func GetAllUsers(w http.ResponseWriter, r *http.Request, client *ent.Client) {
-	ctx := context.Background()
-	users, err := client.User.Query().All(ctx)
-	if err != nil {
-		http.Error(w, fmt.Sprintf("error fetching users: %v", err), http.StatusInternalServerError)
-		return
-	}
-	json.NewEncoder(w).Encode(users)
-}
-
-func QueryUser(w http.ResponseWriter, r *http.Request, client *ent.Client) {
-	ctx := context.Background()
-	name := chi.URLParam(r, "name")
-	user, err := client.User.Query().Where(user.Name(name)).Only(ctx)
-	if err != nil {
-		http.Error(w, fmt.Sprintf("no user or multiple users found: %v", err), http.StatusInternalServerError)
-		return
-	}
-	log.Println("user returned: ", user)
-	json.NewEncoder(w).Encode(user)
-}
-
+// test function for github actions
 func Sum(x, y int) int {
 	return x + y
 }

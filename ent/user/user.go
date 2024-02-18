@@ -15,8 +15,10 @@ const (
 	FieldAge = "age"
 	// FieldName holds the string denoting the name field in the database.
 	FieldName = "name"
-	// FieldCash holds the string denoting the cash field in the database.
-	FieldCash = "cash"
+	// FieldEmail holds the string denoting the email field in the database.
+	FieldEmail = "email"
+	// FieldPassword holds the string denoting the password field in the database.
+	FieldPassword = "password"
 	// Table holds the table name of the user in the database.
 	Table = "users"
 )
@@ -26,7 +28,8 @@ var Columns = []string{
 	FieldID,
 	FieldAge,
 	FieldName,
-	FieldCash,
+	FieldEmail,
+	FieldPassword,
 }
 
 // ValidColumn reports if the column name is valid (part of the table columns).
@@ -62,7 +65,12 @@ func ByName(opts ...sql.OrderTermOption) OrderOption {
 	return sql.OrderByField(FieldName, opts...).ToFunc()
 }
 
-// ByCash orders the results by the cash field.
-func ByCash(opts ...sql.OrderTermOption) OrderOption {
-	return sql.OrderByField(FieldCash, opts...).ToFunc()
+// ByEmail orders the results by the email field.
+func ByEmail(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldEmail, opts...).ToFunc()
+}
+
+// ByPassword orders the results by the password field.
+func ByPassword(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldPassword, opts...).ToFunc()
 }

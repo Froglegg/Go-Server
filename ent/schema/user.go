@@ -15,8 +15,9 @@ type User struct {
 func (User) Fields() []ent.Field {
 	return []ent.Field{
 		field.Int("age").Positive(),
-		field.String("name").Unique(),
-		field.Float("cash").Optional(),
+		field.String("name"),
+		field.String("email").Unique(),
+		field.String("password"),
 	}
 }
 
@@ -28,9 +29,6 @@ func (User) Edges() []ent.Edge {
 // define indices
 func (User) Indexes() []ent.Index {
 	return []ent.Index{
-		// single index field
 		index.Fields("name"),
-		// composite index fields, make it unique to prevent duplicates
-		index.Fields("age", "name").Unique(),
 	}
 }
